@@ -1,0 +1,63 @@
+body{
+    text-align: center;
+    display: block; 
+    width: 50%;
+    margin: 0 auto;
+}
+
+#search {
+    display:flex;
+}
+
+#search #ani1,#search #ani2 {
+    width: 50%;
+}
+
+#search .cover {
+    height: 150;
+    text-align: center;
+    margin: 10px auto;
+    display: none;
+}
+
+.suggestions {
+    height: 300px;
+    overflow-y: scroll;
+    display: none;
+}
+
+.suggestions div {
+    border: 1px solid #ccc;
+    display: flex;
+    padding: 5px;
+}
+
+.suggestions .listItem {
+    height: 50px;
+}
+
+.match-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.match-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #ccc;
+    padding: 5px;
+    text-align: left;
+}
+
+.match-row img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.match-row p {
+    margin: 0;
+}
