@@ -1,45 +1,40 @@
-body{
+body {
     text-align: center;
     width: 50%;
     margin: 0 auto;
 }
-
-#search {
-    display:flex;
+#primary-search {
+    display: flex;
 }
 
-#search p {
-    height: 1em;
-}
-
-#search .search-side {
+#primary-search .search-side {
     width: 50%;
 }
 
-#search .cover {
-    width: 25%;
-    text-align: center;
-    margin: 10px auto;
-    /* display: none; */
-}
-
-#search .search-field {
-    width: 50%;
-    margin: 0 25%;
+#primary-search .search-side input {
+    margin: 1em auto;
 }
 
 .suggestions {
-    height: 300px;
     overflow-y: scroll;
-    display: none;
+    height: 400px;
 }
 
-.suggestions div {
-    border: 1px solid #ccc;
+.suggestions .list-item {
     display: flex;
-    padding: 5px;
+    height: 5em;
+    cursor: pointer;
 }
 
-.suggestions .listItem {
-    height: 50px;
+.suggestions .list-item .title{
+    size: 1em;
+    text-align: left;
+    margin: auto 0;
+    line-clamp: 3;
+}
+
+.suggestions .list-item img{
+    height: 4em;
+    aspect-ratio: 2 / 3;
+    margin: auto 1em;
 }

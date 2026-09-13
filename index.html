@@ -1,33 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="script.js"></script>
-    <link rel="stylesheet" href="style.css">
-    <title>Staff Reference</title>
+    <title>VA Ref</title>
+    <meta name="description" content="Compare Anime Voice Actors">
+    <!-- Script is deferred so that it executes after the page is loaded. -->
+    <script src="script.js" defer></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
-    <h1>Staff Reference</h1>
-    <h2>Based on AniList</h2>
-    <div id="search">
-        <div class="search-side" id="ani1">
-            <p>First Anime</p>
-            <img class="cover" src="placeholder.jpg" alt="No Image">
-            <input class="search-field" type="text" placeholder="One Piece">
-            <div class="suggestions"></div>
+    <h1>VA Ref</h1>
+    <h2>Anilist Based</h2>
+    <div id="primary-search">
+        <div class="search-side">
+            <div class="cover">
+
+            </div>
+            <input id="a-search-1" type="text" placeholder="Anime Title #1">
+            <div class="suggestions">
+
+            </div>
         </div>
-        <div class="search-side" id="ani2">
-            <p>Second Anime</p>
-            <img class="cover" src="placeholder.jpg" alt="No Image">
-            <input class="search-field" type="text" placeholder="Bleach">
-            <div class="suggestions"></div>
+        <div class="search-side">
+            <div class="cover">
+
+            </div>
+            <input id="a-search-2" type="text" placeholder="Anime Title #2">
+            <div class="suggestions">
+
+            </div>
         </div>
-    </div>
-    <button type="button" id="search-button">Search</button>
-    <div>
-        <p id="result"></p>
     </div>
 </body>
 </html>

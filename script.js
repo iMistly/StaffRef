@@ -1,57 +1,42 @@
-// API URL
 const URL = 'https://graphql.anilist.co';
 
-let debounceTimer;
+let apiLimit = null;
+let currentSelection = {};
 
-let selection = {};
+const search1 = document.getElementById('a-search-1');
+const search2 = document.getElementById('a-search-2');
 
-// Wait for document to load
-document.addEventListener('DOMContentLoaded', () => {
-    const searchFields = document.getElementsByClassName('search-field');
-    // Add event listeners to each search field
-    for (let i = 0; i < searchFields.length; i++) {
-        const input = searchFields[i];
-        const list = input.parentElement.querySelector('.suggestions');
+// Sourced https://www.joshwcomeau.com/snippets/javascript/debounce/
+const debounce = (callback, wait) => {
+  let timeoutId = null;
 
-        // Add event listeners to each search field
-        input.addEventListener('input', (e) => {
-            clearTimeout(debounceTimer);
-            const query = input.value.trim();
+  return (...args) => {
+    window.clearTimeout(timeoutId);
 
-            if (!query) { list.style.display = 'none'; return; }    
+    timeoutId = window.setTimeout(() => {
+      callback.apply(null, args);
+    }, wait);
+  };
+}
 
-            debounceTimer = setTimeout(() => fetchSuggestions(query, input), 500);
-        });
-    }
-
-    // Add event listener to search button
-    // document.getElementById('search-button').addEventListener('click', compareShows);
-});
-
-// Get suggestions from AniList
-async function fetchSuggestions(animeName, inputField) {
-    const perPage = 8;
+const searchSuggestions = debounce(async (ev) => {
     const query = `
-    query ($name: String!) {
-        Page(perPage: ${perPage}) {
-            pageInfo {
-                currentPage
-                hasNextPage
-            }
-            media(search: $name, type: ANIME) {
+        query ($search: String!, $perPage: Int) {
+            Page(perPage: $perPage) {
+                media(search: $search, type: ANIME) {
                 id
                 title {
+                    romaji
                     english
                     native
                 }
                 coverImage {
                     medium
                 }
+                }
             }
-        }
-    }`;
-
-    var options = {
+        }`;
+    const options = {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -59,77 +44,36 @@ async function fetchSuggestions(animeName, inputField) {
         },
         body: JSON.stringify({
             query: query,
-            variables: {name: animeName}
+            variables: {search: ev.target.value, perPage: 8}
         })
     };
+    let results = await fetch(URL, options);
+    apiLimit = await results.headers.get('x-ratelimit-remaining');
+    console.log(apiLimit);
+    let data = await results.json();
+    renderSuggestions(data.data.Page.media, ev.target.id)
+}, 400);
 
-    var results = await (async () => {
-        try {
-            return await (await fetch(URL, options)).json();
-        } catch (error) {
-            alert(`Could not search API\n${error}`)
-        }
-    })();
+function renderSuggestions(suggestions, id){
+    let par = document.getElementById(id).parentElement;
+    let sugg = par.getElementsByClassName("suggestions")[0];
+    let cover = par.getElementsByClassName("cover")[0];
 
-    const suggestions = results.data.Page.media.map(media => `
-        <div class="listItem">
-            <img src="${media.coverImage.medium}" alt="No Image">
-            <p>${media.title.english || media.title.native}</p>
-        </div>
-    `).join('');
-    
+    suggestions.map((s) => {
+        let ele = document.createElement('div');
+        ele.classList.add('list-item');
+        ele.id = `ani-${s.id}`;
+        ele.innerHTML = `
+            <img src="${s.coverImage.medium}">
+            <div class="title">${s.title.english || s.title.romaji || s.title.native}</div>
+        `;
+        ele.addEventListener('click', (ev) => {
+            currentSelection[id] = ev.target.id.split('-')[1];
+            console.log(currentSelection);
+            cover.innerHTML = `<img src="${s.coverImage.medium}">`;
+        });
+        sugg.appendChild(ele);
+    });
 }
 
-function fetchAllStaff(id) {
-    const query = `
-    query ($id: Int, $page: Int) {
-        Media(id: $id, type: ANIME) {
-            staff(page: $page, perPage: 25, sort: RELEVANCE) {
-                pageInfo { hasNextPage }
-                edges {
-                    role
-                    node {
-                        id
-                        name { full }
-                        image { medium }
-                    }
-                }
-            }
-        }
-    }`;
-}
-
-function fetchAllCharacters(id) {
-    const query = `
-    query ($id: Int, $page: Int) {
-        Media(id: $id, type: ANIME) {
-            characters(page: $page, perPage: 25, sort: ROLE) {
-                pageInfo { hasNextPage }
-                edges {
-                    node {
-                        id
-                        name { full }
-                    }
-                    voiceActors(sort: LANGUAGE) {
-                        id
-                        name { full }
-                        languageV2
-                        image { medium }
-                    }
-                }
-            }
-        }
-    }`;
-}
-
-async function fetchMediaDetails(id) {
-    const [staffEdges, characterEdges] = await Promise.all([
-        fetchAllStaff(id),
-        fetchAllCharacters(id)
-    ]);
-
-    return {
-        staff: { edges: staffEdges },
-        characters: { edges: characterEdges }
-    };
-}
+[search1,search2].map((e) => e.addEventListener('input', searchSuggestions));
