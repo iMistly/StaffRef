@@ -1,7 +1,21 @@
 const URL = 'https://graphql.anilist.co';
 
-let apiLimit = null;
+let lastApiHeader = null;
 let currentSelection = {};
+
+function checkLimit(){
+    if(!lastApiHeader){return;}
+    let limit = lastApiHeader.get('x-ratelimit-remaining');
+    let retry = lastApiHeader.get('retry-after');
+    console.log(limit, retry);
+    // if(limit <= 0){
+    //     window.alert(`You have exceeded API limit.\nTry again in ~${retry}s`)
+    // }
+}
+
+/////////////////////////////////////
+//////////   Suggestions   //////////
+/////////////////////////////////////
 
 const search1 = document.getElementById('a-search-1');
 const search2 = document.getElementById('a-search-2');
@@ -20,6 +34,7 @@ const debounce = (callback, wait) => {
 }
 
 const searchSuggestions = debounce(async (ev) => {
+    if(!ev.target.value?.length){return;}
     const query = `
         query ($search: String!, $perPage: Int) {
             Page(perPage: $perPage) {
@@ -48,11 +63,20 @@ const searchSuggestions = debounce(async (ev) => {
             variables: {search: ev.target.value, perPage: 8}
         })
     };
-    let results = await fetch(URL, options);
-    apiLimit = await results.headers.get('x-ratelimit-remaining');
-    console.log(apiLimit);
-    let data = await results.json();
-    renderSuggestions(data.data.Page.media, ev.target.id)
+    fetch(URL, options).then(results => {
+        lastApiHeader = results.headers;
+        checkLimit();
+        if (results.ok) {
+            return results.json().then(data => {
+                renderSuggestions(data.data.Page.media, ev.target.id);
+            });
+        } else {
+            console.log("ruh roh");
+            return results.json().then(data => {
+                window.alert(`Error Code: ${results.status}\n${data.errors[0].message}`)
+            });
+        }
+    });
 }, 400);
 
 function renderSuggestions(suggestions, id){
@@ -68,21 +92,21 @@ function renderSuggestions(suggestions, id){
         notice.style.display = "none";
         sugg.style.display = "block";
 
-    suggestions.map((s) => {
-        let ele = document.createElement('div');
-        ele.classList.add('list-item');
-        ele.id = `ani-${s.id}`;
-        ele.innerHTML = `
-            <img src="${s.coverImage.medium}">
+        suggestions.map((s) => {
+            let ele = document.createElement('div');
+            ele.classList.add('list-item');
+            ele.id = `ani-${s.id}`;
+            ele.innerHTML = `
+                <img src="${s.coverImage.medium}">
                 <p class="title">${s.title.english || s.title.romaji || s.title.native}</p>
-        `;
-        ele.addEventListener('click', (ev) => {
+            `;
+            ele.addEventListener('click', (ev) => {
                 currentSelection[id] = s.id;
-            console.log(currentSelection);
+                console.log(currentSelection);
                 cover.innerHTML = `<img src="${s.coverImage.large}">`;
+            });
+            sugg.appendChild(ele);
         });
-        sugg.appendChild(ele);
-    });
     } else{ // If there are no suggestions
         sugg.style.display = "none";
         notice.style.display = "block";
@@ -91,3 +115,7 @@ function renderSuggestions(suggestions, id){
 }
 
 [search1,search2].map((e) => e.addEventListener('input', searchSuggestions));
+
+/////////////////////////////////////
+/////////   Compare Staff   /////////
+/////////////////////////////////////
