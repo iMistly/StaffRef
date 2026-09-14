@@ -32,6 +32,7 @@ const searchSuggestions = debounce(async (ev) => {
                 }
                 coverImage {
                     medium
+                    large
                 }
                 }
             }
@@ -58,6 +59,14 @@ function renderSuggestions(suggestions, id){
     let par = document.getElementById(id).parentElement;
     let sugg = par.getElementsByClassName("suggestions")[0];
     let cover = par.getElementsByClassName("cover")[0];
+    let notice = par.getElementsByClassName("notice")[0];
+    // Reset displayed suggestions
+    sugg.innerHTML = '';
+
+    if(suggestions?.length){
+        // Unhide suggestions box
+        notice.style.display = "none";
+        sugg.style.display = "block";
 
     suggestions.map((s) => {
         let ele = document.createElement('div');
@@ -65,15 +74,20 @@ function renderSuggestions(suggestions, id){
         ele.id = `ani-${s.id}`;
         ele.innerHTML = `
             <img src="${s.coverImage.medium}">
-            <div class="title">${s.title.english || s.title.romaji || s.title.native}</div>
+                <p class="title">${s.title.english || s.title.romaji || s.title.native}</p>
         `;
         ele.addEventListener('click', (ev) => {
-            currentSelection[id] = ev.target.id.split('-')[1];
+                currentSelection[id] = s.id;
             console.log(currentSelection);
-            cover.innerHTML = `<img src="${s.coverImage.medium}">`;
+                cover.innerHTML = `<img src="${s.coverImage.large}">`;
         });
         sugg.appendChild(ele);
     });
+    } else{ // If there are no suggestions
+        sugg.style.display = "none";
+        notice.style.display = "block";
+        notice.innerHTML = `<p>No Search Results</p>`;
+    }
 }
 
 [search1,search2].map((e) => e.addEventListener('input', searchSuggestions));
