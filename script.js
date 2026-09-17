@@ -1,5 +1,6 @@
 // One Piece (ID: 21) is my extreme tester
 // Most likely cannot retrieve all voice actors and staff, but the most relavent 100-200 should be more than adequete in my opinion...
+// As of 9/17/26 the API limit is 30 queries a minute with 25 entries per page. Ideally you'd get 750 total characters/staff members per limit.
 const URL = 'https://graphql.anilist.co';
 
 let lastApiHeader = null;
@@ -140,3 +141,44 @@ function renderSuggestions(suggestions, id){
 /////////////////////////////////////
 /////////   Compare Staff   /////////
 /////////////////////////////////////
+
+// I want to fetch all staff instead of just voice actors, but that seems to be quite difficult since they seperate same entry staff members to different roles.
+// In other words, different roles can have the same staff member, so 1 query could be filled with a single person 25 times since they had 25 different roles.
+// This query fetches 25 characters at a time along with all of their attached voice actors.
+// It will only return VA's for that media ID since the same character can have other VA's in a different season/iteration of the same anime.
+// It is technically only 25 characters, but each one can have dozens of voice actors.
+async function fetchStaff(id){
+    const query = `
+    query ($mediaId: Int, $page: Int) {
+        Media(id: $mediaId) {
+            characters(page: $page) {
+            pageInfo {
+                perPage
+                currentPage
+            }
+            edges { # Array of character edges
+                node {
+                name {
+                    full # Character name
+                }
+                siteUrl # Link to character on AniList
+                image {
+                    medium # Character image
+                }
+                }
+                role
+                voiceActors { # Array of voice actors of this character for the anime
+                id
+                name {
+                    full # VA name
+                }
+                languageV2 # What language they speak
+                image {
+                    medium # VA Image
+                }
+                }
+            }
+            }
+        }
+    }`;
+}
