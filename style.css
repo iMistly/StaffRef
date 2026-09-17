@@ -1,13 +1,14 @@
 /* Center content if on larger screen */
 @media (min-width: 800px){
     body{
-        width: 50%
+        width: 50% !important; 
     }
 }
 
 body {
     text-align: center;
     margin: 0 auto;
+    width: 95%;
 }
 
 #primary-search {
@@ -45,14 +46,26 @@ body {
     outline: 1px solid #000A;
 }
 
-.suggestions .list-item .title{
-    font-size: 1em;
+.suggestions .list-item .details {
+    display: block;
     text-align: left;
+}
+
+.suggestions .list-item .details .title {
+    font-size: 1em;
+    line-height: 1em;
+    max-height: 2em;
+    margin: 0.5em 0;
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
             line-clamp: 2;
     -webkit-box-orient: vertical;
+}
+
+.suggestions .list-item .details .year {
+    font-size: 0.75em;
+    opacity: 50%;
 }
 
 .suggestions .list-item img{
@@ -62,4 +75,8 @@ body {
 
 .suggestions .notice{
     text-align: center;
+}
+
+#compare-button{
+    margin: 0.5em;
 }

@@ -1,3 +1,5 @@
+// One Piece (ID: 21) is my extreme tester
+// Most likely cannot retrieve all voice actors and staff, but the most relavent 100-200 should be more than adequete in my opinion...
 const URL = 'https://graphql.anilist.co';
 
 let lastApiHeader = null;
@@ -45,12 +47,13 @@ const showSearching = debounce((ev) => {
 
 // Send API request to fetch 8 suggestions based on search query
 const searchSuggestions = debounce(async (ev) => {
-    if(!ev.target.value?.length){return;}
+    if(!ev.target.value?.length){return;} // Do not run if input is blank
     const query = `
         query ($search: String!, $perPage: Int) {
             Page(perPage: $perPage) {
                 media(search: $search, type: ANIME) {
                 id
+                seasonYear
                 title {
                     romaji
                     english
@@ -110,7 +113,10 @@ function renderSuggestions(suggestions, id){
             ele.id = `ani-${s.id}`;
             ele.innerHTML = `
                 <img src="${s.coverImage.medium}">
-                <p class="title">${s.title.english || s.title.romaji || s.title.native}</p>
+                <div class="details">
+                    <div class="title">${s.title.english || s.title.romaji || s.title.native}</div>
+                    <div class="year">${s.seasonYear}</div>
+                </div>
             `;
             ele.addEventListener('click', (ev) => {
                 currentSelection[id] = s.id;
