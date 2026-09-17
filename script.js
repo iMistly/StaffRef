@@ -3,6 +3,7 @@ const URL = 'https://graphql.anilist.co';
 let lastApiHeader = null;
 let currentSelection = {};
 
+// TODO
 function checkLimit(){
     if(!lastApiHeader){return;}
     let limit = lastApiHeader.get('x-ratelimit-remaining');
@@ -33,6 +34,16 @@ const debounce = (callback, wait) => {
   };
 }
 
+// Fake searching just to show that something is happening but not to execute queries too quickly
+const showSearching = debounce((ev) => {
+    let sugg = ev.target.parentElement.getElementsByClassName('suggestions')[0] ;
+    let notice = ev.target.parentElement.getElementsByClassName('notice')[0];
+    sugg.style.display = "none";
+    notice.style.display = "block";
+    notice.innerHTML = `<p>Searching...</p>`;
+}, 200);
+
+// Send API request to fetch 8 suggestions based on search query
 const searchSuggestions = debounce(async (ev) => {
     if(!ev.target.value?.length){return;}
     const query = `
@@ -77,8 +88,9 @@ const searchSuggestions = debounce(async (ev) => {
             });
         }
     });
-}, 400);
+}, 800);
 
+// Generate html elements based on suggestions json.
 function renderSuggestions(suggestions, id){
     let par = document.getElementById(id).parentElement;
     let sugg = par.getElementsByClassName("suggestions")[0];
@@ -114,7 +126,10 @@ function renderSuggestions(suggestions, id){
     }
 }
 
-[search1,search2].map((e) => e.addEventListener('input', searchSuggestions));
+[search1,search2].map((e) => e.addEventListener('input', (ev) => {
+    showSearching(ev);
+    searchSuggestions(ev);
+}));
 
 /////////////////////////////////////
 /////////   Compare Staff   /////////
