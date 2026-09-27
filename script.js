@@ -1,9 +1,10 @@
+// Anilist provides a free API using GraphQL.
 // One Piece (ID: 21) is my extreme tester
 // Most likely cannot retrieve all voice actors and staff, but the most relavent 100-200 should be more than adequete in my opinion...
 // As of 9/17/26 the API limit is 30 queries a minute with 25 entries per page. Ideally you'd get 750 total characters/staff members per limit.
 const URL = 'https://graphql.anilist.co';
 
-let lastApiHeader = null;
+let lastResponse = null;
 
 class Anime {
     staff = [];
@@ -18,16 +19,20 @@ let selection1 = null;
 let selection2 = null;
 
 function checkLimit(){
-    if(!lastApiHeader){return true;}
-    let limit = lastApiHeader.get('x-ratelimit-remaining');
-    let retry = lastApiHeader.get('retry-after');
-    console.log(limit);
-    if(limit <= 0){
-        window.alert(`You have exceeded API limit.\nTry again in ~${retry}s`);
-        console.log("No more API. Try again in ", retry);
-        return false;
+    if(!lastResponse){
+        return true;
+    } else if (lastResponse.ok){
+        let limit = lastResponse.headers.get('x-ratelimit-remaining');
+        console.log(limit);
+        if(limit <= 0){
+            console.log("No more API calls left...");
+            return false;
+        }
+        return limit;
+    } else {
+        let retry = lastResponse.headers.get('retry-after');
+        window.alert(`Something went wrong (Error ${lastResponse.status}). ${retry ? `Try again in ${retry} seconds.` : ''}`);
     }
-    return limit;
 }
 
 /////////////////////////////////////
@@ -92,20 +97,21 @@ const searchSuggestions = debounce(async (ev) => {
             variables: {search: ev.target.value, perPage: 8}
         })
     };
-    fetch(URL, options).then(results => {
-        lastApiHeader = results.headers;
-        checkLimit();
-        if (results.ok) {
-            return results.json().then(data => {
-                renderSuggestions(data.data.Page.media, ev.target.id);
-            });
-        } else {
-            console.log("ruh roh");
-            return results.json().then(data => {
-                window.alert(`Error Code: ${results.status}\n${data.errors[0].message}`)
-            });
-        }
-    });
+    if(checkLimit()){
+        fetch(URL, options).then(results => {
+            lastResponse = results;
+            if (results.ok) {
+                return results.json().then(data => {
+                    renderSuggestions(data.data.Page.media, ev.target.id);
+                });
+            } else { // We shouldn't even get here
+                console.log("ruh roh");
+                return results.json().then(data => {
+                    window.alert(`Error Code: ${results.status}\n${data.errors[0].message}`)
+                });
+            }
+        });
+    };
 }, 800);
 
 // Generate html elements based on suggestions json.
@@ -214,10 +220,10 @@ async function fetchStaff(mediaId, page){
         })
     };
     return fetch(URL, options).then(async (results) => {
-        lastApiHeader = results.headers;
+        lastResponse = results;
         if (results.ok) {
             return results.json();
-        } else {
+        } else { // We shouldn't even get here
             console.log("ruh roh");
             return results.json().then(data => {
                 window.alert(`Error Code: ${results.status}\n${data.errors[0].message}`)
@@ -226,11 +232,11 @@ async function fetchStaff(mediaId, page){
     });
 }
 
+// This function will use the rest of the API Limit.
 async function fetchAll(){
     let currentAnime = null;
     // Does not determine if alternating, just a helper boolean for the loop.
     let alternateFlag = true;
-    // This will use the rest of the limit
     while(checkLimit()){
         currentAnime = alternateFlag ? selection1 : selection2;
         // If there is nothing left to query switch anime again
