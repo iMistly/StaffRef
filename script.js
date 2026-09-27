@@ -4,17 +4,30 @@
 const URL = 'https://graphql.anilist.co';
 
 let lastApiHeader = null;
-let currentSelection = {};
 
-// TODO
+class Anime {
+    staff = [];
+    hasNextPage = true;
+    currentPage = 1;
+    constructor(id){
+        this.id = id;
+    }
+}
+
+let selection1 = null;
+let selection2 = null;
+
 function checkLimit(){
-    if(!lastApiHeader){return;}
+    if(!lastApiHeader){return true;}
     let limit = lastApiHeader.get('x-ratelimit-remaining');
     let retry = lastApiHeader.get('retry-after');
-    console.log(limit, retry);
-    // if(limit <= 0){
-    //     window.alert(`You have exceeded API limit.\nTry again in ~${retry}s`)
-    // }
+    console.log(limit);
+    if(limit <= 0){
+        window.alert(`You have exceeded API limit.\nTry again in ~${retry}s`);
+        console.log("No more API. Try again in ", retry);
+        return false;
+    }
+    return limit;
 }
 
 /////////////////////////////////////
@@ -39,6 +52,7 @@ const debounce = (callback, wait) => {
 
 // Fake searching just to show that something is happening but not to execute queries too quickly
 const showSearching = debounce((ev) => {
+    if(!ev.target.value?.length){notice.style.display = "none";return;} // Do not run if input is blank
     let sugg = ev.target.parentElement.getElementsByClassName('suggestions')[0] ;
     let notice = ev.target.parentElement.getElementsByClassName('notice')[0];
     sugg.style.display = "none";
@@ -102,6 +116,7 @@ function renderSuggestions(suggestions, id){
     let notice = par.getElementsByClassName("notice")[0];
     // Reset displayed suggestions
     sugg.innerHTML = '';
+    sugg.scrollTop = 0;
 
     if(suggestions?.length){
         // Unhide suggestions box
@@ -120,8 +135,11 @@ function renderSuggestions(suggestions, id){
                 </div>
             `;
             ele.addEventListener('click', (ev) => {
-                currentSelection[id] = s.id;
-                console.log(currentSelection);
+                if (id == 'a-search-1') {
+                    selection1 = new Anime(s.id);
+                } else {
+                    selection2 = new Anime(s.id);
+                }
                 cover.innerHTML = `<img src="${s.coverImage.large}">`;
             });
             sugg.appendChild(ele);
@@ -142,12 +160,14 @@ function renderSuggestions(suggestions, id){
 /////////   Compare Staff   /////////
 /////////////////////////////////////
 
+const searchButton = document.getElementById("compare-button");
+
 // I want to fetch all staff instead of just voice actors, but that seems to be quite difficult since they seperate same entry staff members to different roles.
 // In other words, different roles can have the same staff member, so 1 query could be filled with a single person 25 times since they had 25 different roles.
 // This query fetches 25 characters at a time along with all of their attached voice actors.
 // It will only return VA's for that media ID since the same character can have other VA's in a different season/iteration of the same anime.
 // It is technically only 25 characters, but each one can have dozens of voice actors.
-async function fetchStaff(id){
+async function fetchStaff(mediaId, page){
     const query = `
     query ($mediaId: Int, $page: Int) {
         Media(id: $mediaId) {
@@ -155,6 +175,7 @@ async function fetchStaff(id){
             pageInfo {
                 perPage
                 currentPage
+                hasNextPage
             }
             edges { # Array of character edges
                 node {
@@ -181,4 +202,61 @@ async function fetchStaff(id){
             }
         }
     }`;
+    const options = {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            query: query,
+            variables: {mediaId: mediaId, page: page}
+        })
+    };
+    return fetch(URL, options).then(async (results) => {
+        lastApiHeader = results.headers;
+        if (results.ok) {
+            return results.json();
+        } else {
+            console.log("ruh roh");
+            return results.json().then(data => {
+                window.alert(`Error Code: ${results.status}\n${data.errors[0].message}`)
+            });
+        }
+    });
 }
+
+async function fetchAll(){
+    let currentAnime = null;
+    // Does not determine if alternating, just a helper boolean for the loop.
+    let alternateFlag = true;
+    // This will use the rest of the limit
+    while(checkLimit()){
+        currentAnime = alternateFlag ? selection1 : selection2;
+        // If there is nothing left to query switch anime again
+        if(!currentAnime.hasNextPage){
+            currentAnime = !alternateFlag ? selection1 : selection2;
+            // If neither anime has nothing left, just break the loop
+            if(!currentAnime.hasNextPage){break;}
+        }
+        alternateFlag = !alternateFlag;
+
+        // console.log("Fetching ", currentAnime.id);
+        let results = await fetchStaff(currentAnime.id, currentAnime.currentPage);
+        currentAnime.staff = currentAnime.staff.concat(results.data.Media.characters.edges);
+        currentAnime.hasNextPage = results.data.Media.characters.pageInfo.hasNextPage;
+        currentAnime.currentPage++;
+        // break;
+    }
+    if(selection1.hasNextPage || selection2.hasNextPage){
+        console.log("There's more characters, but we ran out of API requests...")
+    }
+    console.log(selection1);
+    console.log(selection2);
+}
+
+searchButton.addEventListener("click", () => {
+    // Do not compare if both selection aren't ready
+    if(!(selection1 && selection2)){console.log("need some selecting");return;}
+    fetchAll();
+});
