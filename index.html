@@ -10,7 +10,8 @@
 </head>
 <body>
     <h1>Anime Staff Reference</h1>
-    <h2>Powered by Anilist</h2>
+    <h2>Powered by <a href="https://anilist.co" target="_blank">Anilist</a></h2>
+    <p>This website caches data to reduce the number of API requests to Anilist.</p>
     <div id="primary-search">
         <div class="search-side">
             <div class="cover"></div>
@@ -25,7 +26,11 @@
             <div class="suggestions"></div>
         </div>
     </div>
-    <button id="compare-button" type="submit">Compare</button>
+    <button id="compare-button" type="submit" title="Compare both animes.">Compare</button>
     <div id="results"></div>
+    <div>
+        <p>Anime not showing all the characters? Clear the cache to force API calls again.</p>
+        <button id="clear-cache" type="button" onclick="localStorage.clear()" title="Removes all cache from storage.">Clear all cache</button>
+    </div>
 </body>
 </html>

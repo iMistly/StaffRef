@@ -1,6 +1,6 @@
 // Anilist provides a free API using GraphQL.
 // One Piece (ID: 21) is my extreme tester
-// Most likely cannot retrieve all voice actors and staff, but the most relavent 100-200 should be more than adequete in my opinion...
+// Most likely cannot retrieve all voice actors and staff, but the most relevant 100-200 should be more than adequate in my opinion...
 // As of 9/17/26 the API limit is 30 queries a minute with 25 entries per page. Ideally you'd get 750 total characters/staff members per limit.
 const URL = 'https://graphql.anilist.co';
 
@@ -10,8 +10,35 @@ class Anime {
     staff = [];
     hasNextPage = true;
     currentPage = 1;
+
     constructor(id){
         this.id = id;
+        this.load();
+    }
+
+    load() {
+        try {
+            const raw = localStorage.getItem(`anime:${this.id}`);
+            if (!raw) return;
+            const saved = JSON.parse(raw);
+            this.staff = saved.staff;
+            this.hasNextPage = saved.hasNextPage;
+            this.currentPage = saved.currentPage;
+        } catch (e) {
+            console.warn("Cache load failed", e);
+        }
+    }
+
+    save() {
+        try {
+            localStorage.setItem(`anime:${this.id}`, JSON.stringify({
+                staff: this.staff,
+                hasNextPage: this.hasNextPage,
+                currentPage: this.currentPage,
+            }));
+        } catch (e) {
+            console.warn("Cache save failed", e);
+        }
     }
 }
 
@@ -23,9 +50,9 @@ function checkLimit(){
         return true;
     } else if (lastResponse.ok){
         let limit = lastResponse.headers.get('x-ratelimit-remaining');
-        console.log(limit);
-        if(limit <= 0){
-            console.log("No more API calls left...");
+        console.log(limit, " API queries left.");
+        if(limit <= 2){ // Leave some room for error
+            console.log("Running out of API calls...");
             return false;
         }
         return limit;
@@ -57,9 +84,9 @@ const debounce = (callback, wait) => {
 
 // Fake searching just to show that something is happening but not to execute queries too quickly
 const showSearching = debounce((ev) => {
-    if(!ev.target.value?.length){notice.style.display = "none";return;} // Do not run if input is blank
     let sugg = ev.target.parentElement.getElementsByClassName('suggestions')[0] ;
     let notice = ev.target.parentElement.getElementsByClassName('notice')[0];
+    if(!ev.target.value?.length){notice.style.display = "none";return;} // Do not run if input is blank
     sugg.style.display = "none";
     notice.style.display = "block";
     notice.innerHTML = `<p>Searching...</p>`;
@@ -232,33 +259,37 @@ async function fetchStaff(mediaId, page){
     });
 }
 
-// This function will use the rest of the API Limit.
-async function fetchAll(){
-    let currentAnime = null;
-    // Does not determine if alternating, just a helper boolean for the loop.
-    let alternateFlag = true;
-    while(checkLimit()){
-        currentAnime = alternateFlag ? selection1 : selection2;
-        // If there is nothing left to query switch anime again
-        if(!currentAnime.hasNextPage){
-            currentAnime = !alternateFlag ? selection1 : selection2;
-            // If neither anime has nothing left, just break the loop
-            if(!currentAnime.hasNextPage){break;}
-        }
-        alternateFlag = !alternateFlag;
+// This function can use the rest of the API Limit.
+async function fetchAll() {
+    if (!selection1 || !selection2) return;
 
-        // console.log("Fetching ", currentAnime.id);
-        let results = await fetchStaff(currentAnime.id, currentAnime.currentPage);
-        currentAnime.staff = currentAnime.staff.concat(results.data.Media.characters.edges);
-        currentAnime.hasNextPage = results.data.Media.characters.pageInfo.hasNextPage;
-        currentAnime.currentPage++;
-        // break;
+    const animes = [selection1, selection2];
+    let turn = 0;
+
+    while (true) {
+        // Only anime that still have pages left
+        const pending = animes.filter(a => a.hasNextPage);
+        if (pending.length === 0) break;
+
+        if (!checkLimit()) break;
+
+        // Round-robin between whatever is still pending
+        const current = pending[turn++ % pending.length];
+
+        const results = await fetchStaff(current.id, current.currentPage);
+        const characters = results?.data?.Media?.characters;
+        if (!characters) break; // request failed, break instead of error.
+
+        current.staff.push(...characters.edges);
+        current.hasNextPage = characters.pageInfo.hasNextPage;
+        current.currentPage++;
+        current.save();
     }
-    if(selection1.hasNextPage || selection2.hasNextPage){
-        console.log("There's more characters, but we ran out of API requests...")
+
+    if (animes.some(a => a.hasNextPage)) {
+        console.log("There's more characters, but we ran out of API requests...");
     }
-    console.log(selection1);
-    console.log(selection2);
+    console.log(selection1, selection2);
 }
 
 searchButton.addEventListener("click", () => {
